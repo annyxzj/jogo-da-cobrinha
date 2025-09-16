@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo da Cobrinha</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #1a202c;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            color: white;
+        }
+        canvas {
+            background-color: #2d3748;
+            border: 4px solid #4a5568;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            padding: 2rem;
+            background-color: #1f2937;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        #score, #gameOver {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #e2e8f0;
+        }
+        #gameOver {
+            color: #ef4444;
+            display: none;
+            text-align: center;
+            margin-top: 1rem;
+        }
+        .btn {
+            background-color: #4a5568;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #636b77;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-3xl font-bold mb-4">Jogo da Cobrinha</h1>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div id="score" class="mt-4">Pontuação: 0</div>
+        <div id="gameOver">
+            <h2 class="text-2xl font-bold">Fim de Jogo!</h2>
+            <p>Pressione a barra de espaço para reiniciar.</p>
+        </div>
+        <button id="startButton" class="btn">Iniciar Jogo</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+        const gameOverDisplay = document.getElementById('gameOver');
+        const startButton = document.getElementById('startButton');
+
+        const gridSize = 20;
+        const tileCount = canvas.width / gridSize;
+
+        let snake = [];
+        let food = {};
+        let direction = { x: 0, y: 0 };
+        let score = 0;
+        let isGameOver = false;
+        let gameLoopId;
+
+        function createSnake() {
+            snake = [{ x: 10, y: 10 }];
+            direction = { x: 0, y: 0 };
+            score = 0;
+            isGameOver = false;
+            scoreDisplay.textContent = `Pontuação: ${score}`;
+            gameOverDisplay.style.display = 'none';
+            startButton.style.display = 'none';
+        }
+
+        function createFood() {
+            food = {
+                x: Math.floor(Math.random() * tileCount),
+                y: Math.floor(Math.random() * tileCount)
+            };
+        }
+
+        function draw() {
+            // Limpa o canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Desenha a comida
+            ctx.fillStyle = '#ef4444'; // Cor da comida (vermelho)
+            ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize, gridSize);
+
+            // Desenha a cobrinha
+            snake.forEach((segment, index) => {
+                ctx.fillStyle = index === 0 ? '#4ade80' : '#22c55e'; // Cabeça verde-claro, corpo verde
+                ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
+                ctx.strokeStyle = '#16a34a'; // Borda verde escura
+                ctx.strokeRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
+            });
+        }
+
+        function update() {
+            if (isGameOver) return;
+
+            const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
+
+            // Verifica colisões
+            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount || checkCollision(head)) {
+                endGame();
+                return;
+            }
+
+            // Adiciona nova cabeça
+            snake.unshift(head);
+
+            // Verifica se a comida foi consumida
+            if (head.x === food.x && head.y === food.y) {
+                score++;
+                scoreDisplay.textContent = `Pontuação: ${score}`;
+                createFood();
+            } else {
+                // Remove a cauda se a comida não foi consumida
+                snake.pop();
+            }
+
+            draw();
+        }
+
+        function checkCollision(head) {
+            // Verifica se a cabeça colidiu com o próprio corpo
+            for (let i = 1; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function endGame() {
+            isGameOver = true;
+            gameOverDisplay.style.display = 'block';
+            startButton.style.display = 'block';
+            startButton.textContent = 'Reiniciar Jogo';
+            clearInterval(gameLoopId);
+        }
+
+        function gameLoop() {
+            update();
+        }
+
+        function startGame() {
+            createSnake();
+            createFood();
+            gameLoopId = setInterval(gameLoop, 100);
+        }
+
+        document.addEventListener('keydown', e => {
+            if (isGameOver) return;
+            switch (e.key) {
+                case 'ArrowUp':
+                    if (direction.y === 1) return;
+                    direction = { x: 0, y: -1 };
+                    break;
+                case 'ArrowDown':
+                    if (direction.y === -1) return;
+                    direction = { x: 0, y: 1 };
+                    break;
+                case 'ArrowLeft':
+                    if (direction.x === 1) return;
+                    direction = { x: -1, y: 0 };
+                    break;
+                case 'ArrowRight':
+                    if (direction.x === -1) return;
+                    direction = { x: 1, y: 0 };
+                    break;
+            }
+        });
+        
+        startButton.addEventListener('click', () => {
+             startGame();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === ' ' && isGameOver) {
+                startGame();
+            }
+        });
+
+    </script>
+</body>
+</html>
